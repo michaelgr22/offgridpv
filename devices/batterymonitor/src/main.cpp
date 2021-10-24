@@ -23,6 +23,8 @@ double readVoltage(const int pin)
 
 double calculateVoltageSensor(double voltage)
 {
+  TelnetStream.print("Voltage on Pin: ");
+  TelnetStream.println(voltage);
   float R1 = 30000.0;
   float R2 = 7500.0;
 
