@@ -7,6 +7,7 @@
 #include "aws_credentials.h"
 #include "coordinate.h"
 #include "straight.h"
+#include "ota.h"
 
 const int battery1Pin = 39;
 const int battery2Pin = 35;
@@ -41,6 +42,11 @@ void publishMessageToAws(double battery1Voltage, double battery2Voltage, double 
   battery2["voltage"] = battery2Voltage;
   battery2["capacity"] = battery2Capacity;
 
+  char jsonBuffer[512];
+  serializeJson(json, jsonBuffer);
+  TelnetStream.print("Publish: ");
+  TelnetStream.println(jsonBuffer);
+
   awsIot.publishMessage(json, aws_iot_topic);
 }
 
@@ -71,18 +77,28 @@ void setup()
 {
   Serial.begin(9600);
 
+  WiFi.setHostname("offgridpv-batterymonitor");
   WifiConnector wifiConnector = WifiConnector(ssid, password);
   wifiConnector.connect();
+  if (wifiConnector.isConnected())
+  {
+    TelnetStream.print("Connected to Wifi. IP: ");
+    Serial.println(WiFi.localIP());
+  }
 
-  awsIot.connect();
+  if (awsIot.connect())
+    TelnetStream.println("Connected to AwsIot.");
+
+  setupOTA("batterymonitor", ssid.c_str(), password.c_str());
 }
 
 void loop()
 {
+  ArduinoOTA.handle();
   double battery1Voltage = calculateVoltageSensor(readVoltage(battery1Pin));
   double battery2Voltage = calculateVoltageSensor(readVoltage(battery2Pin));
   double battery1Capacity = calculateCapacity(battery1Voltage);
   double battery2Capacity = calculateCapacity(battery2Voltage);
   publishMessageToAws(battery1Voltage, battery2Voltage, battery1Capacity, battery2Capacity);
-  delay(10000);
+  delay(5000);
 }
