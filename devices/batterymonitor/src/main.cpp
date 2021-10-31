@@ -13,6 +13,24 @@ const int battery1Pin = 39;
 const int battery2Pin = 35;
 
 AwsIot awsIot = AwsIot(aws_cert_ca, aws_cert_crt, aws_cert_private, aws_iot_endpoint, device_name, aws_max_reconnect_tries);
+WifiConnector wifiConnector = WifiConnector(ssid, password);
+
+void setupConnections()
+{
+  WiFi.setHostname("offgridpv-batterymonitor");
+
+  wifiConnector.connect();
+  if (wifiConnector.isConnected())
+  {
+    TelnetStream.print("Connected to Wifi. IP: ");
+    Serial.println(WiFi.localIP());
+  }
+
+  if (awsIot.connect())
+    TelnetStream.println("Connected to AwsIot.");
+
+  setupOTA("batterymonitor", ssid.c_str(), password.c_str());
+}
 
 double readVoltage(const int pin)
 {
@@ -79,28 +97,24 @@ void setup()
 {
   Serial.begin(9600);
 
-  WiFi.setHostname("offgridpv-batterymonitor");
-  WifiConnector wifiConnector = WifiConnector(ssid, password);
-  wifiConnector.connect();
-  if (wifiConnector.isConnected())
-  {
-    TelnetStream.print("Connected to Wifi. IP: ");
-    Serial.println(WiFi.localIP());
-  }
-
-  if (awsIot.connect())
-    TelnetStream.println("Connected to AwsIot.");
-
-  setupOTA("batterymonitor", ssid.c_str(), password.c_str());
+  setupConnections();
 }
 
 void loop()
 {
-  ArduinoOTA.handle();
-  double battery1Voltage = calculateVoltageSensor(readVoltage(battery1Pin));
-  double battery2Voltage = calculateVoltageSensor(readVoltage(battery2Pin));
-  double battery1Capacity = calculateCapacity(battery1Voltage);
-  double battery2Capacity = calculateCapacity(battery2Voltage);
-  publishMessageToAws(battery1Voltage, battery2Voltage, battery1Capacity, battery2Capacity);
+  if (wifiConnector.isConnected())
+  {
+    ArduinoOTA.handle();
+    double battery1Voltage = calculateVoltageSensor(readVoltage(battery1Pin));
+    double battery2Voltage = calculateVoltageSensor(readVoltage(battery2Pin));
+    double battery1Capacity = calculateCapacity(battery1Voltage);
+    double battery2Capacity = calculateCapacity(battery2Voltage);
+    publishMessageToAws(battery1Voltage, battery2Voltage, battery1Capacity, battery2Capacity);
+  }
+  else
+  {
+    setupConnections();
+  }
+
   delay(5000);
 }
