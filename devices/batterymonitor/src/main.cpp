@@ -9,8 +9,13 @@
 #include "straight.h"
 #include "ota.h"
 
-const int battery1Pin = 39;
-const int battery2Pin = 35;
+const float R1 = 125000.0;
+const float R2R4 = 100000.0;
+const float R3 = 25000.0;
+const float R5 = 12000.0;
+
+const int R3PIN = 33;
+const int R5PIN = 39;
 
 AwsIot awsIot = AwsIot(aws_cert_ca, aws_cert_crt, aws_cert_private, aws_iot_endpoint, device_name, aws_max_reconnect_tries);
 WifiConnector wifiConnector = WifiConnector(ssid, password);
@@ -22,8 +27,8 @@ void setupConnections()
   wifiConnector.connect();
   if (wifiConnector.isConnected())
   {
-    TelnetStream.print("Connected to Wifi. IP: ");
-    Serial.println(WiFi.localIP());
+    TelnetStream.println("Connected to Wifi. IP: ");
+    TelnetStream.println(WiFi.localIP());
   }
 
   if (awsIot.connect())
@@ -36,17 +41,22 @@ double readVoltage(const int pin)
 {
   esp_adc_cal_characteristics_t adc_chars;
   esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  return esp_adc_cal_raw_to_voltage(analogRead(pin), &adc_chars) / 1000.0;
+  double voltage = esp_adc_cal_raw_to_voltage(analogRead(pin), &adc_chars) / 1000.0;
+  TelnetStream.println(pin);
+  TelnetStream.print("Voltage: ");
+  TelnetStream.println(voltage);
+  return voltage;
 }
 
-double calculateVoltageSensor(double voltage)
+double calculateBattery2Voltage(double r3voltage)
 {
-  TelnetStream.print("Voltage on Pin: ");
-  TelnetStream.println(voltage);
-  float R1 = 30000.0;
-  float R2 = 7500.0;
+  return r3voltage * ((R2R4 + R3) / R3);
+}
 
-  return voltage / (R2 / (R1 + R2));
+double calculateBattery1Voltage(double r5Voltage, double battery2Voltage)
+{
+  double battery1and2Voltage = r5Voltage * ((R5 + R2R4) / R5);
+  return battery1and2Voltage - battery2Voltage;
 }
 
 void publishMessageToAws(double battery1Voltage, double battery2Voltage, double battery1Capacity, double battery2Capacity)
@@ -105,10 +115,15 @@ void loop()
   if (wifiConnector.isConnected())
   {
     ArduinoOTA.handle();
-    double battery1Voltage = calculateVoltageSensor(readVoltage(battery1Pin));
-    double battery2Voltage = calculateVoltageSensor(readVoltage(battery2Pin));
+    double r3Voltage = readVoltage(R3PIN);
+    double r5Voltage = readVoltage(R5PIN);
+
+    double battery2Voltage = calculateBattery2Voltage(r3Voltage);
+    double battery1Voltage = calculateBattery1Voltage(r5Voltage, battery2Voltage);
+
     double battery1Capacity = calculateCapacity(battery1Voltage);
     double battery2Capacity = calculateCapacity(battery2Voltage);
+
     publishMessageToAws(battery1Voltage, battery2Voltage, battery1Capacity, battery2Capacity);
   }
   else
