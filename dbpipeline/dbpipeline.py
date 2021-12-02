@@ -1,12 +1,20 @@
-from requests_pkcs12 import get
+from credentials import AWS_ENDPOINT, AWS_PORT, MONGO_CONNECTION_STRING, PKCS12_PASSWORD
 
-from credentials import AWS_ENDPOINT, PKCS12_PASSWORD, PORT
+from awsiot import AwsIot
+from mongodb import MongoDB
+from power_measurements_collection import PowerMeasurementsCollection
+from models.batterymonitor_measurement import BatterymonintorMeasurement
 
-PKS12 = 'dbpipeline_credentials.p12'
 
-url = 'https://{}:{}/things/offgridpvtest/shadow'.format(AWS_ENDPOINT, PORT)
+aws_iot = AwsIot(AWS_ENDPOINT, AWS_PORT, PKCS12_PASSWORD)
+mongodb = MongoDB(MONGO_CONNECTION_STRING, 'offgridpv', 'power_measurements')
+powermeasurements_collection = PowerMeasurementsCollection(mongodb)
 
-response = get(url, pkcs12_filename=PKS12,
-               pkcs12_password=PKCS12_PASSWORD)
 
-print(response.text)
+batterymonintor_shadow = aws_iot.get_thing_shadow('batterymonitor')
+batterymonitor_measurement = BatterymonintorMeasurement.from_shadow(
+    batterymonintor_shadow)
+print(batterymonitor_measurement.to_dict())
+result = powermeasurements_collection.insert_measurement(
+    batterymonitor_measurement)
+print(result)
