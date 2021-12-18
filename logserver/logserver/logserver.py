@@ -37,5 +37,5 @@ class LogPipeline(BaseHTTPRequestHandler):
         return logstring
 
 
-httpd = HTTPServer(('localhost', 8081), LogPipeline)
+httpd = HTTPServer(('0.0.0.0', 8081), LogPipeline)
 httpd.serve_forever()
