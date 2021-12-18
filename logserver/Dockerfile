@@ -4,7 +4,7 @@ FROM python:3.7.8
 RUN mkdir -p /logserver/src
 
 # Copying src code to Container
-COPY logserver /weatherdata_to_postgres/src
+COPY logserver /logserver/src
 
 # Setting Home Directory for containers
 WORKDIR /logserver/src
