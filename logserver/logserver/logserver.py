@@ -1,6 +1,6 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-logpath = '/data/log/offgridpv'
+logpath = '/logstorage'
 
 
 class LogPipeline(BaseHTTPRequestHandler):
