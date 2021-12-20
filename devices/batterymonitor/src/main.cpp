@@ -2,12 +2,18 @@
 #include <wifi_connector.h>
 #include <aws_iot.h>
 #include <esp_adc_cal.h>
+#include <string>
 
 #include "wifi_credentials.h"
 #include "aws_credentials.h"
 #include "coordinate.h"
 #include "straight.h"
 #include "ota.h"
+#include "logging.h"
+
+using std::string;
+
+const string device = "batterymonitor";
 
 const float R1 = 125000.0;
 const float R2R4 = 100000.0;
@@ -19,22 +25,24 @@ const int R5PIN = 39;
 
 AwsIot awsIot = AwsIot(aws_cert_ca, aws_cert_crt, aws_cert_private, aws_iot_endpoint, device_name, aws_max_reconnect_tries);
 WifiConnector wifiConnector = WifiConnector(ssid, password);
+Logging logging = Logging("http://kuberneteshome:8081/");
 
 void setupConnections()
 {
+
   WiFi.setHostname("offgridpv-batterymonitor");
 
   wifiConnector.connect();
   if (wifiConnector.isConnected())
   {
-    TelnetStream.println("Connected to Wifi. IP: ");
-    TelnetStream.println(WiFi.localIP());
+    logging.syncTime();
+    logging.sendLog(device, "Connected to WiFi successfull");
+
+    if (awsIot.connect())
+      logging.sendLog(device, "Connected to Aws Iot successfull");
+
+    setupOTA("batterymonitor", ssid.c_str(), password.c_str());
   }
-
-  if (awsIot.connect())
-    TelnetStream.println("Connected to AwsIot.");
-
-  setupOTA("batterymonitor", ssid.c_str(), password.c_str());
 }
 
 double readVoltage(const int pin)
@@ -42,9 +50,6 @@ double readVoltage(const int pin)
   esp_adc_cal_characteristics_t adc_chars;
   esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
   double voltage = esp_adc_cal_raw_to_voltage(analogRead(pin), &adc_chars) / 1000.0;
-  TelnetStream.println(pin);
-  TelnetStream.print("Voltage: ");
-  TelnetStream.println(voltage);
   return voltage;
 }
 
@@ -74,8 +79,9 @@ void publishMessageToAws(double battery1Voltage, double battery2Voltage, double 
 
   char jsonBuffer[512];
   serializeJson(json, jsonBuffer);
-  TelnetStream.print("Publish: ");
-  TelnetStream.println(jsonBuffer);
+
+  logging.sendLog(device, "Publish Message to Aws IoT");
+  logging.sendLog(device, jsonBuffer);
 
   awsIot.publishMessage(json, aws_iot_topic);
 }
@@ -105,6 +111,7 @@ double calculateCapacity(double voltage)
 
 void setup()
 {
+
   Serial.begin(9600);
 
   setupConnections();
@@ -115,6 +122,7 @@ void loop()
   if (wifiConnector.isConnected())
   {
     ArduinoOTA.handle();
+    logging.sendLog(device, "Start Voltage Reading");
     double r3Voltage = readVoltage(R3PIN);
     double r5Voltage = readVoltage(R5PIN);
 
