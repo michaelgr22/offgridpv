@@ -1,3 +1,4 @@
+import urllib
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 logpath = '/logstorage'
@@ -35,14 +36,19 @@ class LogPipeline(BaseHTTPRequestHandler):
         self.end_headers()
 
     def __find_device(self, message):
-        return message.split('&')[0].split('=')[1]
+        return self.__unquote_http_string(message.split('&')[0].split('=')[1])
 
     def __create_logstring(self, message):
         items = message.split('&')[1:]
         logstring = ''
         for item in items:
-            logstring += (item.split('=')[1] + " ")
+            logstring += (self.__unquote_http_string(item.split('=')[1]) + " ")
         return logstring
+
+    def __unquote_http_string(self, string):
+        return urllib.parse.unquote(string)
+
+    
 
 
 httpd = HTTPServer(('0.0.0.0', 8081), LogPipeline)
