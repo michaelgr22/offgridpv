@@ -20,7 +20,7 @@ class LogPipeline(BaseHTTPRequestHandler):
             self.__set_response(200)
             self.wfile.write(post_body_bytes)
         except:
-            self.__set_response(200)
+            self.__set_response(400)
         self.write_to_file(post_body_string)
 
     def write_to_file(self, message):
