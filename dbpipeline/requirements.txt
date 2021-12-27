@@ -1,3 +1,4 @@
 certifi
 pymongo
 requests_pkcs12
+dnspython
