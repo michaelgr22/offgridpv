@@ -80,10 +80,8 @@ void publishMessageToAws(double battery1Voltage, double battery2Voltage, double 
   char jsonBuffer[512];
   serializeJson(json, jsonBuffer);
 
-  logging.sendLog(device, "Publish Message to Aws IoT");
-  logging.sendLog(device, jsonBuffer);
-
-  awsIot.publishMessage(json, aws_iot_topic);
+  string published = awsIot.publish(json, aws_iot_topic);
+  logging.sendLog(device, "Published: " + published);
 }
 
 double calculateCapacity(double voltage)
