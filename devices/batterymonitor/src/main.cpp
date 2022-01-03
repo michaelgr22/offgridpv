@@ -15,10 +15,11 @@ using std::string;
 
 const string device = "batterymonitor";
 
-const float R1 = 125000.0;
-const float R2R4 = 100000.0;
-const float R3 = 25000.0;
-const float R5 = 12000.0;
+const float R1 = 125680.0;
+const float R2 = 99900.0;
+const float R3 = 25030.0;
+const float R4 = 100800.0;
+const float R5 = 12020.0;
 
 const int R3PIN = 33;
 const int R5PIN = 39;
@@ -47,20 +48,25 @@ void setupConnections()
 
 double readVoltage(const int pin)
 {
+  const int numberOfSamples = 32;
+  double sum = 0;
+
   esp_adc_cal_characteristics_t adc_chars;
   esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  double voltage = esp_adc_cal_raw_to_voltage(analogRead(pin), &adc_chars) / 1000.0;
-  return voltage;
+
+  for (int i = 0; i < numberOfSamples; i++)
+    sum += esp_adc_cal_raw_to_voltage(analogRead(pin), &adc_chars) / 1000.0;
+  return sum / numberOfSamples;
 }
 
 double calculateBattery2Voltage(double r3voltage)
 {
-  return r3voltage * ((R2R4 + R3) / R3);
+  return r3voltage * ((R2 + R3) / R3);
 }
 
 double calculateBattery1Voltage(double r5Voltage, double battery2Voltage)
 {
-  double battery1and2Voltage = r5Voltage * ((R5 + R2R4) / R5);
+  double battery1and2Voltage = r5Voltage * ((R5 + R4) / R5);
   return battery1and2Voltage - battery2Voltage;
 }
 
