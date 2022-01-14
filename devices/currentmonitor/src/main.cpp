@@ -1,11 +1,13 @@
 #include <Arduino.h>
 #include <iostream>
 #include <wifi_connector.h>
+#include <aws_iot.h>
 #include <string.h>
 #include <esp_adc_cal.h>
 #include <driver/adc.h>
 
 #include "wifi_credentials.h"
+#include "aws_credentials.h"
 #include "logging.h"
 #include "ota.h"
 
@@ -13,7 +15,7 @@ using std::string;
 
 const string device = "currentmonitor";
 const int vref = 1121;
-const int measured_offset = 25;
+const int measured_offset = 35;
 
 const int INPIN = 33;
 const int OUTPIN = 39;
@@ -22,6 +24,7 @@ const int VCCPIN = 35;
 const double R1 = 990.0;
 const double R2 = 988.0;
 
+AwsIot awsIot = AwsIot(aws_cert_ca, aws_cert_crt, aws_cert_private, aws_iot_endpoint, device_name, aws_max_reconnect_tries);
 WifiConnector wifiConnector = WifiConnector(ssid, password);
 Logging logging = Logging("http://kuberneteshome:8081/");
 
@@ -35,6 +38,9 @@ void setupConnections()
   {
     logging.syncTime();
     logging.sendLog(device, "Connected to WiFi successfull");
+
+    if (awsIot.connect())
+      logging.sendLog(device, "Connected to Aws Iot successfull");
 
     setupOTA("currentmonitor", ssid.c_str(), password.c_str());
   }
@@ -61,7 +67,7 @@ double calculateCurrentFromVoltage(const double inVoltage, const double vccVolta
   const double quiescentOutputvoltage = 0.5;
   const double qov = quiescentOutputvoltage * vccVoltage;
 
-  double voltage_qov = inVoltage - qov + 0.02;
+  double voltage_qov = inVoltage - qov + 0.03;
   logging.sendLog(device, String(voltage_qov, 6).c_str());
   return voltage_qov / factor;
 }
@@ -69,6 +75,25 @@ double calculateCurrentFromVoltage(const double inVoltage, const double vccVolta
 double calculateVccVoltage(const double r2Voltage)
 {
   return r2Voltage * ((R1 + R2) / R2);
+}
+
+void publishMessageToAws(double vccVoltage, double generatedSensorVoltage, double generatedCurrent)
+{
+  StaticJsonDocument<512> json;
+  JsonObject stateObj = json.createNestedObject("state");
+  JsonObject reportedObj = stateObj.createNestedObject("reported");
+  JsonObject generated = reportedObj.createNestedObject("generated");
+  JsonObject consumed = reportedObj.createNestedObject("consumed");
+
+  generated["vccVoltage"] = vccVoltage;
+  generated["generatedSensorVoltage"] = generatedSensorVoltage;
+  generated["generatedCurrent"] = generatedCurrent;
+
+  char jsonBuffer[512];
+  serializeJson(json, jsonBuffer);
+
+  string published = awsIot.publish(json, aws_iot_topic);
+  logging.sendLog(device, "Published: " + published);
 }
 
 void setup()
@@ -101,6 +126,8 @@ void loop()
     double inCurrent = calculateCurrentFromVoltage(inVoltage, vccVoltage);
     logging.sendLog(device, "inCurrent");
     logging.sendLog(device, String(inCurrent, 6).c_str());
+
+    publishMessageToAws(vccVoltage, inVoltage, inCurrent);
   }
   else
   {
