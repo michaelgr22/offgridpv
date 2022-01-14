@@ -1,12 +1,12 @@
-import json
 from requests_pkcs12 import get
+import json
 
 
 class AwsIot:
-    def __init__(self, aws_endpoint, aws_port, pkcs12_password):
+    def __init__(self, aws_endpoint, aws_port, pkcs12, pkcs12_password):
         self.aws_endpoint = aws_endpoint
         self.aws_port = aws_port
-        self.pkcs12 = 'dbpipeline_credentials.p12'
+        self.pkcs12 = pkcs12
         self.pkcs12_password = pkcs12_password
 
     def get_thing_shadow(self, thing):

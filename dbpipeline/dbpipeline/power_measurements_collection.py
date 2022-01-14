@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 
 
 class PowerMeasurementsCollection:
-    def __init__(self, mdb_collection):
-        self.sensor_id = 'batterymonitor'
+    def __init__(self, mdb_collection, sensor_id):
+        self.sensor_id = sensor_id
         self.mdb_collection = mdb_collection
 
     def insert_measurement(self, measurement):
