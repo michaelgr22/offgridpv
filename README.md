@@ -7,7 +7,9 @@ To automate the workloads of my pv system I use different microcontrollers and s
 
  - [ACS758](https://www.digikey.de/de/datasheets/allegromicrosystemsllc/allegro-microsystems-llcacs758datasheetashx)-> current measurement 
   -  [ADS1115](https://www.ti.com/lit/ds/symlink/ads1114.pdf?ts=1648959763893&ref_url=https%253A%252F%252Fwww.google.com%252F)-> external ADC to measure output voltage of ACS758 
-  -  [ESP32](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf)-> internal ADC to measure voltage of batteries
+  -  [ESP32](https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf)-> internal ADC to measure voltage of batteries via voltage dividers
+
+![esp32voltage](https://i.ibb.co/J519bx3/esp32-battery.jpg)
 
 ## Infrastructure:
 ![infrastructure](https://i.ibb.co/tmsxzjy/infrastructure.png)
